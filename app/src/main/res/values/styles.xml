@@ -1,0 +1,36 @@
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:textColor">@color/silverColorText</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <style name="DarkAppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/darkColorPrimary</item>
+        <item name="colorPrimaryDark">@color/darkColorPrimaryDark</item>
+        <item name="colorAccent">@color/darkColorAccent</item>
+        <item name="android:colorBackground">@color/darkColorBackground</item>
+        <item name="android:textColor">@color/silverColorText</item>
+        <item name="windowNoTitle">true</item>
+        <item name="buttonStyle">@style/Widget.AppCompat.Button.Colored</item>
+        <item name="android:buttonStyleToggle">@style/Widget.AppCompat.Button.Colored</item>
+    </style>
+
+    <style name="SilverAppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/silverColorPrimary</item>
+        <item name="colorPrimaryDark">@color/silverColorPrimaryDark</item>
+        <item name="colorAccent">@color/silverColorAccent</item>
+        <item name="android:colorBackground">@color/silverColorBackground</item>
+        <item name="android:textColor">@color/silverColorText</item>
+        <item name="windowNoTitle">true</item>
+        <item name="buttonStyle">@style/Widget.AppCompat.Button.Borderless.Colored</item>
+    </style>
+
+</resources>

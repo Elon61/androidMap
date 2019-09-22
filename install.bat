@@ -1,0 +1,2 @@
+adb install -r "C:\Users\Elon61\Coding\IdeaProjects\MapTest\app\build\outputs\apk\debug\app-debug.apk"
+adb shell am start -n "com.example.maptest/com.example.mapArduino.MainActivity" -a android.intent.action.MAIN -c android.intent.category.LAUNCHER

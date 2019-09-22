@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">ArMap</string>
+  <string name="none_paired"/>
+  <string name="select_btserial_device_from_paired_devices">Select btSerial device from paired devices:</string>
+  <string name="if_no_devices_are_listed_please_pair_your_device_in_android_settings">If no devices are listed please pair your device in Android settings</string>
+  <string name="bluetooth_disconnected">BlueTooth: disconnected</string>
+  <string name="connect">Connect</string>
+  <string name="darkModeToggle">Theme</string>
+  <string name="button">Button</string>
+  <string name="LatX">Latitude X</string>
+  <string name="LatY">Latitude Y</string>
+  <string name="bt_not_available">Bluetooth is not available</string>
+  <string name="connect_success">Connected to %1$s</string>
+  <string name="connect_lost">Connection lost</string>
+  <string name="connect_fail">Unable to connect</string>
+  <string name="auto">Auto</string>
+</resources>
