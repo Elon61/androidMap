@@ -1,10 +1,12 @@
 package com.example.mapArduino;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.opengl.Visibility;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.View;
@@ -23,10 +25,10 @@ import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.io.*;
 
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback { //Main activity. is the whole app in this case.
+    //Constants for convenience.
     public static final String DARK = "dark";
     public static final String LIGHT = "light";
-    public static final int themeChangeClicks = 1;
     GoogleMap map;
 
     boolean AUTO_STATE = false;
@@ -52,43 +54,37 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         //https://github.com/akexorcist/Android-BluetoothSPPLibrary
-        //library with some docs.
-
+        //Library used.
         //Buttons: Auto - sends "a"
         //up arrow - 'f'
         //down arrow - 'b'
         //right arrow - 'r'
         //left arrow - 'l'
-
+        //mine - 'p' - to get coords.
         super.onCreate(savedInstanceState);
-        setTheme(themer.getTheme());
-        setContentView(R.layout.activity_main);
-//        logFile = new File(getFilesDir(), "/logger.txt");
+        setTheme(themer.getTheme()); //theme as defined in themer.java
+        setContentView(R.layout.activity_main); //set the layout according to the XML
+
+        //Define the file where the log will be stored.
         logFile = new File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "/logger.txt");
+
         setupMap();
-        initButtons();
         setupButtons();
 
-        appendLog("game;start"); //DEBUG
-
         bluetooth = new BluetoothSPP(this);
-
+        //alert if bluetooth isn't available.
         if (bluetooth.isBluetoothAvailable()) setupBluetooth();
-        else {
-            Toast.makeText(getApplicationContext(), R.string.bt_not_available, Toast.LENGTH_LONG).show();
-//            finish();
-        }
+        else Toast.makeText(getApplicationContext(), R.string.bt_not_available, Toast.LENGTH_LONG).show();
 
 
     }
 
-    public void onStart() {
+    public void onStart() { //called at activity start.
         super.onStart();
-//        setTheme(R.style.DarkAppTheme);
         startBluetooth();
     }
 
-    public void onDestroy() {
+    public void onDestroy() { //called at activity end.
         super.onDestroy();
         bluetooth.stopService();
     }
@@ -102,28 +98,60 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             public void onDeviceDisconnected() {
                 connect.setText(R.string.connect_lost);
+                buttonVis(View.INVISIBLE);
             }
 
             public void onDeviceConnectionFailed() {
                 connect.setText(R.string.connect_fail);
             }
         });
-
-        bluetooth.setOnDataReceivedListener(new BluetoothSPP.OnDataReceivedListener() { // move to not on the button. add extra buttons
+        //whenever a valid marker is received add it to the map and log it.
+        bluetooth.setOnDataReceivedListener(new BluetoothSPP.OnDataReceivedListener() {
             @Override
-            public void onDataReceived(byte[] data, String message) {
-                //TODO log to file, and add marker
-                //TODO test for whether or not the string is the coords
-                try {
-                    addNewMarker("marker", Float.parseFloat(message.split(" ")[0]), Float.parseFloat(message.split(" ")[1]));
-                    appendLog("marker@(" + message + ") added");
-                } catch (NumberFormatException e) {
-//                    e.printStackTrace();
-                }
-//                System.out.println(Arrays.toString(data));
-                System.out.println(message); // "latSpacelong" is format
+            public void onDataReceived(byte[] data, String message) throws NumberFormatException {
+                addNewMarker("marker", Float.parseFloat(message.split(" ")[0]), Float.parseFloat(message.split(" ")[1]));
+                appendLog("marker@(" + message + ") added");
             }
         });
+    }
+
+    private void setupButtons() {
+        initButtons();
+        connect.setOnClickListener(new View.OnClickListener() {
+            @SuppressLint("ResourceType") // IDE being stupid
+            @Override
+            public void onClick(View v) {
+                if(!bluetooth.isBluetoothAvailable()) Toast.makeText(getApplicationContext(), R.string.bt_not_available, Toast.LENGTH_LONG).show();
+                else if (bluetooth.getServiceState() == BluetoothState.STATE_CONNECTED) {
+                    bluetooth.disconnect();
+                } else {
+                    Intent intent = new Intent(getApplicationContext(), DeviceList.class);
+                    connect.setText(R.id.connect);
+                    startActivityForResult(intent, BluetoothState.REQUEST_CONNECT_DEVICE);
+                }
+            }
+        });
+        log.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                shareLogFile();
+            }
+        });
+        //reset log on long press.
+        log.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                if (logFile.exists()) {
+                    logFile.delete();
+                }
+                Toast.makeText(MainActivity.this, "Reset log", Toast.LENGTH_SHORT).show();
+                return true;
+            }
+        });
+
+        setupArrowKeys();
+        setupSpooky();
+        buttonVis(View.INVISIBLE); // turns buttons invisible until BT connects
     }
 
     private void initButtons() {
@@ -138,64 +166,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         log = findViewById(R.id.logger);
     }
 
-    private void setupButtons() {
-        connect.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if(!bluetooth.isBluetoothAvailable()) Toast.makeText(getApplicationContext(), R.string.bt_not_available, Toast.LENGTH_LONG).show();
-                else if (bluetooth.getServiceState() == BluetoothState.STATE_CONNECTED) {
-                    bluetooth.disconnect();
-                } else {
-                    Intent intent = new Intent(getApplicationContext(), DeviceList.class);
-                    connect.setText(R.id.connect);
-                    startActivityForResult(intent, BluetoothState.REQUEST_CONNECT_DEVICE);
-                }
-            }
-        });
-//        auto_mode.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-////                if (!AUTO_STATE) bluetooth.send(AUTO_ON, true);
-////                else bluetooth.send(AUTO_OFF, true);
-////                AUTO_STATE ^= true;
-//                bluetooth.send(AUTO_ON, true);
-//            }
-//        });
-        log.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-//                shareLogText();
-                shareLogFile();
-            }
-        });
-        log.setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View view) {
-                if (logFile.exists()) {
-                    logFile.delete();
-                }
-                Toast.makeText(MainActivity.this, "Reset log", Toast.LENGTH_SHORT).show();
-                return true;
-            }
-        });
-
-        setupArrowKeys();
-        setupSpooky();
-        buttonVis(View.INVISIBLE);
-    }
-
     private void shareLogFile() {
-//        Intent shareIntent = new Intent();
-//        shareIntent.setAction(Intent.ACTION_SEND);
-//        shareIntent.putExtra(Intent.EXTRA_STREAM, logFile);
-//        shareIntent.setType("image/jpeg");
-//        startActivity(Intent.createChooser(shareIntent, "boo"));
-
-
-//        Intent sharingIntent = new Intent(Intent.ACTION_SEND);
-//        sharingIntent.setType("text/*");
-//        sharingIntent.putExtra(Intent.EXTRA_STREAM, Uri.parse("file://" + logFile.getAbsolutePath()));
-//        startActivity(Intent.createChooser(sharingIntent, "share file with"));
+        //creating an android sharing intent and passing it the log file through a fileProvider, which is now required since APIv24. android deals with the rest of the file sharing
         Intent sharingIntent = new Intent(Intent.ACTION_SEND);
         sharingIntent.setType("text/*");
         sharingIntent.putExtra(Intent.EXTRA_STREAM, fileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID + ".fileProvider", logFile));
@@ -203,7 +175,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
-    private void shareLogText() {
+    private void shareLogText() { //same as shareLogFile but it shares the log but as a text message instead of as a file.
         StringBuilder banana = new StringBuilder("Log: \n");
         try {
             BufferedReader buf = new BufferedReader(new FileReader(logFile));
@@ -225,29 +197,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void setupSpooky() {
+        //setup the theme change button.
         spooky.setVisibility(View.VISIBLE);
         spooky.setBackgroundColor(Color.TRANSPARENT);
-//        spooky.setTextColor(Color.WHITE);
         spooky.setOnClickListener(new View.OnClickListener(){
             int a = themer.spooky;
             @Override
             public void onClick(View v){
-//                if(a % 12 == 5) themeChange(DARK);
-//                else if(a % 12 == 11) themeChange(LIGHT);
-//                a++;
-//                themer.spooky = a;
-                System.out.println("theme?");
-                if(a % themeChangeClicks == (themeChangeClicks - 1)){
-                    System.out.println("Changed theme!");
-                    themer.spooky = a + 1;
-                    nextTheme();
-                }
+                themer.spooky = a + 1;
+                nextTheme();
                 a++;
             }
         });
     }
 
     private void setupArrowKeys() {
+        //creating a single listener for all buttons that do pretty much the same thing is convenient.
         View.OnClickListener arrowListener = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -263,12 +228,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void buttonVis(int visibility) {
+        //to change the visibility of all the buttons that won't work if called before BT connects.
         up.setVisibility(visibility);
         down.setVisibility(visibility);
         right.setVisibility(visibility);
         left.setVisibility(visibility);
         mine.setVisibility(visibility);
-//        auto_mode.setVisibility(visibility);
+        auto_mode.setVisibility(visibility);
     }
 
     private void buttonSender(View v) {
@@ -294,12 +260,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 break;
 
         }
-        System.out.println("Sent: " + content);
-        appendLog("Sent: " + content);
-        bluetooth.send(content, true);
+        if(bluetooth.isBluetoothAvailable() && bluetooth.getConnectedDeviceName() != null) { //to ensure it won't crash if somehow used not connected.
+            appendLog("Sent: " + content);
+            bluetooth.send(content, true);
+        }
     }
 
     private void startBluetooth() {
+        //Bt setup
         if (bluetooth.isBluetoothAvailable()) {
             if (!bluetooth.isBluetoothEnabled()) {
                 bluetooth.enable();
@@ -313,6 +281,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        //Further BT setup
         if (requestCode == BluetoothState.REQUEST_CONNECT_DEVICE) {
             if (resultCode == Activity.RESULT_OK)
                 bluetooth.connect(data);
@@ -335,32 +304,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
+        //finish the map setup once google finishes their thing.
         map = googleMap;
         map.setMapStyle(new MapStyleOptions(getResources().getString(R.string.style_json_clean)));
         map.getUiSettings().setCompassEnabled(false);
         map.getUiSettings().setMapToolbarEnabled(false);
         map.setMapStyle(new MapStyleOptions(getResources().getString(themer.getMapTheme())));
-//        addNewMarker("Jerusalem", 31.746421, 35.239667);
     }
 
-    public void addNewMarker(String name, double latX, double latY){
+    public void addNewMarker(String name, double latX, double latY) {
+        //add a marker on the map and center the view on it
         LatLng pos = new LatLng(latX, latY);
         map.addMarker(new MarkerOptions().position(pos).title(name));
         map.moveCamera(CameraUpdateFactory.newLatLng(pos));
-    }
-
-    private void themeChange(String name){
-        switch(name){
-            case DARK:
-                themer.changeToTheme(this, 1);
-                break;
-            case LIGHT:
-                themer.changeToTheme(this, 0);
-                break;
-
-            default:
-
-        }
     }
 
     private void nextTheme() {
@@ -368,60 +324,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     public void appendLog(String text) {
-//        System.out.println(String.valueOf(getDataDir()+ "/LiterallyNothing.txt"));
-//        setDestinationInExternalPublicDir(Environment.DIRECTORY_MUSIC, filename);
-//        File logFile = new File(String.valueOf(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)), "maplog.txt");
-//        System.out.println(getFilesDir()+ "/logger.txt");
-//        File logFile = new File("/storage/self/primary/Android/data/com.example.maptest/files/mmm.txt");
-        System.out.println(Environment.getExternalStorageDirectory());
-
-        if (!logFile.exists())
-        {
-            try
-            {
-                System.out.println("newFile");
+        //add to the log file the text. if it doesn't exist create it. uses file defined in onCreate.
+        if (!logFile.exists()) {
+            try {
                 logFile.createNewFile();
             }
-            catch (IOException e)
-            {
-                // TODO Auto-generated catch block
+            catch (IOException e) {
                 e.printStackTrace();
             }
         }
-        try
-        {
+        try {
             //BufferedWriter for performance, true to set append to file flag
             BufferedWriter buf = new BufferedWriter(new FileWriter(logFile, true));
             buf.append(text);
             buf.newLine();
             buf.close();
         }
-        catch (IOException e)
-        {
-            // TODO Auto-generated catch block
+        catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    private void dealWithPerms() {
-//        String[] permissions = {Manifest.permission.WRITE_EXTERNAL_STORAGE};
-//        requestPermissions(permissions, 2);
-        ActivityCompat.requestPermissions(this,
-                new String[] {
-                        Manifest.permission.READ_EXTERNAL_STORAGE
-                }, 2); // your request code
-        ActivityCompat.requestPermissions(this,
-                new String[] {
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE
-                }, 3); // your request code
-    }
-
-    private boolean hasReadPermissions() {
-        return (ContextCompat.checkSelfPermission(getBaseContext(), Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED);
-    }
-
-    private boolean hasWritePermissions() {
-        return (ContextCompat.checkSelfPermission(getBaseContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED);
     }
 }
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+<!--    map key isn't stored on github because that's stupid.   -->
     <string name="map_key">
-        AIzaSyCTKU7EucO9EA2cuMm7056li1_Slu2MAI0
     </string>
 </resources>
